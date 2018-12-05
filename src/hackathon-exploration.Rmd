@@ -1,0 +1,129 @@
+---
+title: "Donor exploration"
+subtitle: "Sydney D4D Datahackathon 2018"
+author: "SG"
+date: "24/11/2018"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(here)
+```
+
+# Import
+
+```{r}
+donors <- read_csv(here("data/raw/donors.csv"), 
+                   col_types = cols(
+                     id = col_character(),
+                     state = col_character(),
+                     postcode = col_character(),
+                     dateofbirth = col_character(),
+                     gender = col_character(),
+                     FirstContributionDate = col_character(),
+                     LastContributionDate = col_character()
+                   )) %>%
+  mutate(gender = factor(gender),
+         state = factor(state)) %>%
+  mutate_at(vars(dateofbirth, FirstContributionDate, LastContributionDate),
+            function(v) {
+              str_remove(v, " .*$") %>%
+                ymd %>%
+                na_if(ymd("1901-01-01"))
+              })
+```
+
+## Basic cleaning and feature engineering.
+
+* Compute age
+* Compute donor frequency
+    * Once only
+    * More than once
+* Compute days since last donation
+* Create a logical to denote if female and under 35 (our target persona, based on teammates' exploration)
+
+```{r features}
+donors_clean <- donors %>%
+  mutate(age = (today() - dateofbirth) / 365 %>% as.numeric,
+         freq = factor(case_when(FirstContributionDate == LastContributionDate ~ "Once",
+                                 FirstContributionDate != LastContributionDate ~ "More than once")),
+         recency = today() - LastContributionDate,
+         active = case_when(recency < 365 ~ "Active",
+                            recency > 365 ~ "Inactive"),
+         f_under35 = case_when(gender == "Female" & age < 35 ~ TRUE,
+                               TRUE ~ FALSE))  %>%
+  filter(! age > 110, ! age < 15,
+         ! postcode == "NULL") 
+```
+
+
+
+```{r explore}
+donors %>%
+  filter(postcode != "NULL") %>%
+  group_by(postcode, ) %>%
+  tally %>%
+  top_n(30) %>%
+  arrange(n) %>%
+  mutate(postcode, factor(postcode) %>% reorder(-n)) %>%
+  ggplot(aes(x = reorder(postcode, n), y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+donors_clean %>%
+  ggplot(aes(age)) +
+  geom_histogram(breaks = c(seq(0, 100, 10)))
+
+donors_clean %>%
+  ggplot(aes(recency)) +
+  geom_histogram()
+
+summary(donors_clean)
+```
+
+# Output for T
+
+Enumerate target persona by postcode, and write to CSV to share with teammates.
+
+```{r output}
+postcodes <- donors_clean %>%
+  group_by(postcode, f_under35) %>%
+  tally %>%
+  filter(f_under35) %>%
+  arrange(-n) %>%
+  select(-f_under35)
+
+write.csv(postcodes, here("data/clean/f_under30.csv"))
+```
+
+# Emergency join
+
+Relies on data supplied by teammates - joining target persona count to service locations. Compute crude score (no modeling yet).
+
+```{r join}
+
+services <- read_csv(here("data/clean/services.csv")) %>%
+  rename(postcode = Postcode,
+         service_n = `Count of Primary/Satellite`)
+
+scores <- postcodes %>%
+ inner_join(services, by = "postcode") %>%
+  mutate(score = 0.7 * n + 0.3 * service_n) %>%
+  arrange(-score)
+
+write.csv(scores, here("data/clean/scores.csv"))
+```
+
+
+
+
+
+
+
