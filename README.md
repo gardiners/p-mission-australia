@@ -13,4 +13,4 @@ Repository for a potential Data for Democracy project spawned from the Sydney da
 * `/data`
     * `raw` for source data. Ideally read-only.
     * `clean` for cleaned, processed, linked, synthesised data etc. 
-* `/pub` for presentations, reports etc.
+* `/docs` for presentations, reports etc. Will be presented with GitHub pages.
