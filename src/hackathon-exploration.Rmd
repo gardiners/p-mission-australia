@@ -4,13 +4,13 @@ subtitle: "Sydney D4D Datahackathon 2018"
 author: "SG"
 date: "24/11/2018"
 output: 
+  html_document: default
   md_document:
     variant: markdown_github
-  html_document: default
 ---
 
-```{r setup}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 library(tidyverse)
 library(readxl)
