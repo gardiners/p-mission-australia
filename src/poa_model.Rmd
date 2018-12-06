@@ -1,0 +1,62 @@
+---
+title: "POA-level model"
+author: "SG"
+date: "06/12/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(pxR)
+library(tidyverse)
+library(here)
+library(readxl)
+```
+
+The census data used below (`seifa_poa`, filename [data/raw/seifa2016_poa.px](../data/raw/seifa2016_poa.px)) are the [2016 Socio-economic indices for Australia](http://stat.data.abs.gov.au/Index.aspx?DataSetCode=SEIFA_POA) for postal area statistical areas, provided by the [Australian Bureau of Statistics](http://stat.data.abs.gov.au/Index.aspx) under the [CC BY 2.5 AU](https://creativecommons.org/licenses/by/2.5/au/) license.
+
+Import and tidy (obfuscated donor data, service data, census data):
+
+```{r data}
+donors_poa <- readRDS(here("data/clean/donors_obf.rds")) %>%
+  select(poa = postcode) %>%
+  group_by(poa) %>%
+  summarise(donors = n())
+
+seifa_poa <- read.px(here("data/raw/seifa2016_poa.px")) %>%
+  as.tibble %>%
+  na.omit %>%
+  mutate(index_measure = paste(Index.Type, Measure, sep = " - ")) %>%
+  select(poa = Postal.Area.Code, index_measure, value) %>%
+  spread(key = index_measure, value = value) %>%
+  rename(pop = `Index of Relative Socio-economic Disadvantage - Usual resident population`) %>%
+  select(-contains("Usual resident population")) %>%
+  mutate(poa = if_else(str_detect(poa, "^8"),
+                      paste0("0", poa),
+                      as.character(poa)))
+
+services_poa <- read_excel(here("data/raw/Service Details.xlsx")) %>%
+  select(`Post Code`) %>%
+  transmute(poa = factor(`Post Code`)) %>%
+  group_by(poa) %>%
+  summarise(services = n())
+```
+
+Merge:
+
+```{r joins}
+poas <- seifa_poa %>%
+  left_join(donors_poa, by = "poa") %>%
+  left_join(services_poa, by = "poa") %>%
+  mutate_at(c("donors", "services"), ~coalesce(.x, 0L))
+```
+
+Still to do:
+
+* Import and merge with ABS geographic boundary shapefile
+* Normalise population, donor and services to density, using areas from shapefile.
+* Exploratory analysis of combined dataset.
+* Actual modelling!
