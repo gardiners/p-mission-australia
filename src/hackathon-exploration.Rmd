@@ -4,8 +4,9 @@ subtitle: "Sydney D4D Datahackathon 2018"
 author: "SG"
 date: "24/11/2018"
 output: 
-  html_document:
-    keep_md: true
+  md_document:
+    variant: markdown_github
+  html_document: default
 ---
 
 ```{r setup}
