@@ -1,44 +1,11 @@
 ``` r
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 library(tidyverse)
-```
-
-    ## -- Attaching packages -------------------------------------------------------------------------------------------- tidyverse 1.2.1 --
-
-    ## v ggplot2 3.1.0     v purrr   0.2.5
-    ## v tibble  1.4.2     v dplyr   0.7.8
-    ## v tidyr   0.8.2     v stringr 1.3.1
-    ## v readr   1.2.1     v forcats 0.3.0
-
-    ## -- Conflicts ----------------------------------------------------------------------------------------------- tidyverse_conflicts() --
-    ## x dplyr::filter() masks stats::filter()
-    ## x dplyr::lag()    masks stats::lag()
-
-``` r
 library(readxl)
 library(lubridate)
-```
-
-    ## 
-    ## Attaching package: 'lubridate'
-
-    ## The following object is masked from 'package:base':
-    ## 
-    ##     date
-
-``` r
 library(here)
 ```
-
-    ## here() starts at C:/Users/samga/Google Drive/Dev/d4d/p-mission-australia
-
-    ## 
-    ## Attaching package: 'here'
-
-    ## The following object is masked from 'package:lubridate':
-    ## 
-    ##     here
 
 Import
 ======
@@ -102,8 +69,6 @@ donors %>%
   coord_flip()
 ```
 
-    ## Selecting by n
-
 ![](hackathon-exploration_files/figure-markdown_github/explore-1.png)
 
 ``` r
@@ -112,8 +77,6 @@ donors_clean %>%
   geom_histogram(breaks = c(seq(0, 100, 10)))
 ```
 
-    ## Don't know how to automatically pick scale for object of type difftime. Defaulting to continuous.
-
 ![](hackathon-exploration_files/figure-markdown_github/explore-2.png)
 
 ``` r
@@ -121,10 +84,6 @@ donors_clean %>%
   ggplot(aes(recency)) +
   geom_histogram()
 ```
-
-    ## Don't know how to automatically pick scale for object of type difftime. Defaulting to continuous.
-
-    ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
 
 ![](hackathon-exploration_files/figure-markdown_github/explore-3.png)
 
@@ -192,15 +151,7 @@ service locations. Compute crude score (no modeling yet).
 services <- read_csv(here("data/clean/services.csv")) %>%
   rename(postcode = Postcode,
          service_n = `Count of Primary/Satellite`)
-```
 
-    ## Parsed with column specification:
-    ## cols(
-    ##   Postcode = col_character(),
-    ##   `Count of Primary/Satellite` = col_double()
-    ## )
-
-``` r
 scores <- postcodes %>%
  inner_join(services, by = "postcode") %>%
   mutate(score = 0.7 * n + 0.3 * service_n) %>%
