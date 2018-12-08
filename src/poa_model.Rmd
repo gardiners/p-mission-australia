@@ -10,13 +10,16 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 ```{r}
+library(sf)
 library(pxR)
 library(tidyverse)
 library(here)
 library(readxl)
 ```
 
-The census data used below (`seifa_poa`, filename [data/raw/seifa2016_poa.px](../data/raw/seifa2016_poa.px)) are the [2016 Socio-economic indices for Australia](http://stat.data.abs.gov.au/Index.aspx?DataSetCode=SEIFA_POA) for postal area statistical areas, provided by the [Australian Bureau of Statistics](http://stat.data.abs.gov.au/Index.aspx) under the [CC BY 2.5 AU](https://creativecommons.org/licenses/by/2.5/au/) license.
+# Datasets
+
+The census data used below (`seifa_poa`, filename [data/raw/seifa2016_poa.px](../data/raw/seifa2016_poa.px)) are the [2016 Socio-economic indices for Australia](http://stat.data.abs.gov.au/Index.aspx?DataSetCode=SEIFA_POA) for postal area statistical areas, provided by the [Australian Bureau of Statistics](http://stat.data.abs.gov.au/Index.aspx) under the [CC BY 2.5 AU](https://creativecommons.org/licenses/by/2.5/au/) license. 
 
 Import and tidy (obfuscated donor data, service data, census data):
 
@@ -45,18 +48,30 @@ services_poa <- read_excel(here("data/raw/Service Details.xlsx")) %>%
   summarise(services = n())
 ```
 
-Merge:
+Spatial boundaries for each POA are also provided by the ABS:
+
+```{r spatia}
+target <- tempfile()
+unzip(here("data/raw/1270055003_poa_2016_aust_shape.zip"),
+      exdir = target)
+
+poa_spatial <- st_read(paste(target, "POA_2016_AUST.shp", sep = "/"))
+```
+
+Merge and compute normalised donor and service densities:
 
 ```{r joins}
 poas <- seifa_poa %>%
   left_join(donors_poa, by = "poa") %>%
   left_join(services_poa, by = "poa") %>%
-  mutate_at(c("donors", "services"), ~coalesce(.x, 0L))
+  left_join(select(as.data.frame(poa_spatial), poa = POA_CODE16, area = AREASQKM16)) %>%
+  mutate_at(c("donors", "services"), ~coalesce(.x, 0L)) %>%
+  mutate(pop_density = pop / area,
+         donors_norm = donors / pop * 1e5,
+         services_norm = services / pop * 1e5)
 ```
+
 
 Still to do:
 
-* Import and merge with ABS geographic boundary shapefile
-* Normalise population, donor and services to density, using areas from shapefile.
-* Exploratory analysis of combined dataset.
 * Actual modelling!
